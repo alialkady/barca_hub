@@ -339,5 +339,5 @@ The loader accepts `--team` and `--competition-id`, and the transform, replay, l
 Match data is provided by [StatsBomb](https://statsbomb.com) under their open data terms. See the [StatsBomb open-data repository](https://github.com/statsbomb/open-data) for the licence and attribution requirements, and credit StatsBomb in anything you publish using this data.
 
 ## License
-
-No license has been specified for this repository yet. Add a `LICENSE` file before sharing it publicly.
+ 
+This project is released under the [MIT License](LICENSE). The StatsBomb data it downloads is **not** covered by this license; it remains subject to StatsBomb's own terms (see above).
