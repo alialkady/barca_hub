@@ -1,0 +1,155 @@
+name: barca-hub
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: barca-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-barca}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-barca_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-barca_dw}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, on first start of an empty volume (files run in alphabetical order)
+      - ./warehouse/init:/docker-entrypoint-initdb.d:ro
+      # SQL models you run on demand with: psql -f /models/<file>.sql
+      - ./warehouse/models:/models:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barca} -d ${POSTGRES_DB:-barca_dw}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: barca-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --node-id=0
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"   # Kafka API for clients running on your host
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    container_name: barca-redpanda-console
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "8080:8080"     # Browse topics/messages at http://localhost:8080
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+  dashboard:
+    build: ./dashboard
+    container_name: barca-dashboard
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-barca}:${POSTGRES_PASSWORD:-barca_dev_pw}@postgres:5432/${POSTGRES_DB:-barca_dw}
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app      # live reload while developing
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  loader:
+    build: ./ingestion
+    profiles: ["tools"]        # not started by 'docker compose up'; run on demand
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-barca}:${POSTGRES_PASSWORD:-barca_dev_pw}@postgres:5432/${POSTGRES_DB:-barca_dw}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  live-consumer:
+    build: ./streaming
+    image: barca-hub-streaming
+    entrypoint: ["python", "-u", "live_consumer.py"]
+    environment:
+      KAFKA_BOOTSTRAP: redpanda:9092
+      DATABASE_URL: postgresql://${POSTGRES_USER:-barca}:${POSTGRES_PASSWORD:-barca_dev_pw}@postgres:5432/${POSTGRES_DB:-barca_dw}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    restart: unless-stopped
+
+  replay:
+    build: ./streaming
+    image: barca-hub-streaming
+    profiles: ["tools"]        # on demand: docker compose run --rm replay --match-id <id>
+    entrypoint: ["python", "-u", "replay_producer.py"]
+    environment:
+      KAFKA_BOOTSTRAP: redpanda:9092
+      DATABASE_URL: postgresql://${POSTGRES_USER:-barca}:${POSTGRES_PASSWORD:-barca_dev_pw}@postgres:5432/${POSTGRES_DB:-barca_dw}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["assistant"]          # heavy: start with  docker compose --profile assistant up -d
+    container_name: barca-ollama
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"       # one question at a time: the prompt cache stays warm and the context memory is not multiplied
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama-data:/root/.ollama    # downloaded models live here, so they survive restarts
+    restart: unless-stopped
+    # NVIDIA GPU (needs the NVIDIA Container Toolkit on the host): uncomment to run the model on the GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  assistant:
+    build: ./llm
+    image: barca-hub-assistant
+    profiles: ["assistant"]
+    environment:
+      # to use the read-only database role, set ASSISTANT_DB_USER / ASSISTANT_DB_PASSWORD in .env
+      DATABASE_URL: postgresql://${ASSISTANT_DB_USER:-barca}:${ASSISTANT_DB_PASSWORD:-barca_dev_pw}@postgres:5432/${POSTGRES_DB:-barca_dw}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-8192}
+      PHRASE_ANSWERS: ${PHRASE_ANSWERS:-false}      # true = a second model call writes a sentence (slow on a CPU)
+      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-}     # empty = use all cores; set e.g. 4 to keep the laptop responsive
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./llm/eval:/app/eval      # evaluation results (last_run.json) land on your disk instead of vanishing with the container
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redpanda-data:
+  ollama-data:

@@ -1,0 +1,6 @@
+# Do NOT bump confluent-kafka past 2.5.x without testing against your Redpanda version:
+# 2.6.0 always sends Fetch v12 (even when the broker only supports up to v11), and Redpanda 24.2.x
+# rejects it ("Unsupported version 12 for fetch API"), so the consumer joins its group but can never read.
+# 2.4.0 never sends a Fetch newer than v11.
+confluent-kafka==2.4.0
+psycopg2-binary==2.9.10

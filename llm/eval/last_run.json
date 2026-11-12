@@ -1,0 +1,145 @@
+{
+ "model": "qwen2.5-coder:7b",
+ "results": [
+  {
+   "id": "count_matches",
+   "level": "easy",
+   "ok": true,
+   "reason": "",
+   "seconds": 73.2,
+   "attempts": 1,
+   "sql": "SELECT COUNT(*) AS total_matches\nFROM dw.v_match",
+   "answer": "total matches: 525"
+  },
+  {
+   "id": "red_cards",
+   "level": "easy",
+   "ok": true,
+   "reason": "",
+   "seconds": 15.1,
+   "attempts": 1,
+   "sql": "SELECT SUM(red_cards) AS red_cards\nFROM dw.v_player_match\nWHERE team = 'Barcelona' AND season = '2020/2021'",
+   "answer": "red cards: 2"
+  },
+  {
+   "id": "top_stadium",
+   "level": "easy",
+   "ok": true,
+   "reason": "",
+   "seconds": 9.5,
+   "attempts": 1,
+   "sql": "SELECT stadium, COUNT(*) AS matches\nFROM dw.v_match\nGROUP BY stadium\nORDER BY matches DESC\nLIMIT 1",
+   "answer": "stadium: Spotify Camp Nou, matches: 264"
+  },
+  {
+   "id": "biggest_win_margin",
+   "level": "easy",
+   "ok": false,
+   "reason": "no row matches expected [8]; got [[-1]]",
+   "seconds": 11.1,
+   "attempts": 1,
+   "sql": "SELECT MAX(away_goals - home_goals) AS largest_goal_difference\nFROM dw.v_match\nWHERE result = 'W' AND home_team = 'Barcelona'",
+   "answer": "largest goal difference: -1"
+  },
+  {
+   "id": "distinct_players",
+   "level": "easy",
+   "ok": true,
+   "reason": "",
+   "seconds": 13.3,
+   "attempts": 1,
+   "sql": "SELECT COUNT(DISTINCT player_key) AS player_count\nFROM dw.v_player_match\nWHERE team = 'Barcelona' AND season = '2020/2021'",
+   "answer": "player count: 25"
+  },
+  {
+   "id": "top_scorer",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 17.1,
+   "attempts": 1,
+   "sql": "SELECT player, SUM(goals) AS goals\nFROM dw.v_player_match\nWHERE team = 'Barcelona' AND season = '2020/2021'\nGROUP BY player_key, player\nORDER BY goals DESC\nLIMIT 1",
+   "answer": "player: Lionel Messi, goals: 30"
+  },
+  {
+   "id": "alba_assists",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 13.4,
+   "attempts": 1,
+   "sql": "SELECT SUM(assists) AS assists\nFROM dw.v_player_match\nWHERE player_search LIKE '%jordi alba%' AND season = '2020/2021'",
+   "answer": "assists: 3"
+  },
+  {
+   "id": "top3_xg",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 18.2,
+   "attempts": 1,
+   "sql": "SELECT player, SUM(xg) AS total_xg\nFROM dw.v_player_match\nWHERE team = 'Barcelona' AND season = '2020/2021'\nGROUP BY player_key, player\nORDER BY total_xg DESC\nLIMIT 3",
+   "answer": "3 rows. First row: player: Lionel Messi, total xg: 22.868"
+  },
+  {
+   "id": "keeper_minutes",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 20.1,
+   "attempts": 1,
+   "sql": "SELECT player, SUM(minutes) AS minutes_played\nFROM dw.v_player_match\nWHERE team = 'Barcelona' AND position_played = 'Goalkeeper' AND season = '2020/2021'\nGROUP BY player_key, player\nORDER BY minutes_played DESC\nLIMIT 1",
+   "answer": "player: Marc-Andr\u00e9 ter Stegen, minutes played: 2610"
+  },
+  {
+   "id": "barca_shots_goals",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 15.0,
+   "attempts": 1,
+   "sql": "SELECT SUM(shots) AS total_shots, SUM(goals) AS goals\nFROM dw.v_player_match\nWHERE team = 'Barcelona' AND season = '2020/2021'",
+   "answer": "total shots: 543, goals: 76"
+  },
+  {
+   "id": "free_kick_taker",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 20.6,
+   "attempts": 1,
+   "sql": "SELECT player, COUNT(*) AS free_kick_shots\nFROM dw.v_shot\nWHERE team = 'Barcelona' AND season = '2020/2021' AND shot_type = 'Free Kick'\nGROUP BY player_key, player\nORDER BY free_kick_shots DESC\nLIMIT 1",
+   "answer": "player: Lionel Messi, free kick shots: 40"
+  },
+  {
+   "id": "headed_goals",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 16.6,
+   "attempts": 1,
+   "sql": "SELECT COUNT(*) AS headed_goals\nFROM dw.v_shot\nWHERE team = 'Barcelona' AND season = '2020/2021' AND shot_type = 'Open Play' AND body_part = 'Head' AND is_goal",
+   "answer": "headed goals: 6"
+  },
+  {
+   "id": "busquets_pass_pct",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 43.4,
+   "attempts": 2,
+   "sql": "SELECT player, ROUND((100.0 * SUM(passes_completed) / SUM(passes_attempted))::numeric, 2) AS pass_completion_percentage\nFROM dw.v_player_match\nWHERE player_search LIKE '%sergio busquets%' AND season = '2020/2021'\nGROUP BY player_key, player",
+   "answer": "player: Sergio Busquets, pass completion percentage: 91.79"
+  },
+  {
+   "id": "pedri_starts",
+   "level": "medium",
+   "ok": true,
+   "reason": "",
+   "seconds": 13.3,
+   "attempts": 1,
+   "sql": "SELECT COUNT(*) AS matches_started\nFROM dw.v_player_match\nWHERE player_search LIKE '%pedri%' AND season = '2020/2021' AND started = TRUE",
+   "answer": "matches started: 26"
+  }
+ ]
+}
