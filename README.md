@@ -13,8 +13,6 @@ Barça Hub loads [StatsBomb open data](https://github.com/statsbomb/open-data) i
 
 ---
 
-## Screenshots
-
 ### Live match
 A match replayed through Redpanda and rendered in near real time: score, expected goals (xG), shots, possession, pressures, and a rolling momentum indicator.
 
