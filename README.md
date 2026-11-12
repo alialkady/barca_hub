@@ -23,7 +23,7 @@ A match replayed through Redpanda and rendered in near real time: score, expecte
 ### Key events
 Goals, shots, cards and substitutions, captured from the stream into a queryable feed.
 
-![Key events table](images/key_events.png)
+![Key events table](images/keyevents.png)
 
 ### Ask Barça
 Ask a question in English. A local LLM writes the SQL, the guard validates it, and the answer comes from the rows returned. The generated SQL is always available to inspect.
